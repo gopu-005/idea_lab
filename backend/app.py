@@ -12,6 +12,8 @@ import face_recognition
 
 app = Flask(__name__)
 
+
+
 DATA_DIR = "faces"
 DB_FILE = os.path.join(DATA_DIR, "faces_db.pkl")
 IMAGES_DIR = os.path.join(DATA_DIR, "images")
@@ -25,7 +27,38 @@ if os.path.exists(DB_FILE):
 else:
     faces_db = []
 
-def save_db():
+def save_db():SAVE_DIR = "captured_faces"
+os.makedirs(SAVE_DIR, exist_ok=True)
+
+@app.route("/")
+def index():
+    return render_template("index.html")
+
+@app.route("/upload", methods=["POST"])
+def upload():
+    data = request.get_json()
+    name = data.get("name")
+    img_data = data.get("image")
+
+    if not name or not img_data:
+        return jsonify({"status": "error", "message": "Name or image missing"}), 400
+
+    # Decode Base64 image
+    img_bytes = base64.b64decode(img_data.split(",")[1])
+    img_array = cv2.imdecode(
+        np.frombuffer(img_bytes, np.uint8), cv2.IMREAD_COLOR
+    )
+
+    # Save file
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"{name}_{timestamp}.jpg"
+    filepath = os.path.join(SAVE_DIR, filename)
+    cv2.imwrite(filepath, img_array)
+
+    return jsonify({"status": "ok", "message": f"Saved {filename}"})
+
+if __name__ == "__main__":
+    app.run(debug=True)
     with open(DB_FILE, "wb") as f:
         pickle.dump(faces_db, f)
 
