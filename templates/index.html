@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>College Inauguration — Face Welcome</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Welcome Gate</h1>
+      <p class="subtitle">Capture visitor's face & greet them with style</p>
+    </header>
+
+    <main>
+      <div class="camera-card">
+        <video id="video" autoplay playsinline></video>
+        <canvas id="snapshot" style="display:none;"></canvas>
+
+        <div class="controls">
+          <input id="nameInput" type="text" placeholder="Visitor name (optional)" />
+          <button id="captureBtn" class="btn-primary">Capture & Welcome</button>
+        </div>
+      </div>
+
+      <div id="resultCard" class="result-card hidden">
+        <div class="welcome-text" id="welcomeText"></div>
+        <img id="facePreview" alt="Detected face" />
+        <button id="newBtn" class="btn-secondary">Capture another</button>
+      </div>
+    </main>
+
+    <footer>
+      <small>Make sure to get consent before saving photos. For demo only.</small>
+    </footer>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
