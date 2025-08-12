@@ -10,8 +10,9 @@ from PIL import Image
 import numpy as np
 import cv2
 from dotenv import load_dotenv
+import re
 
-load_dotenv()  # if you use a .env file for MONGO_URI
+load_dotenv()
 
 # CONFIG
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
@@ -28,12 +29,18 @@ db = client[DB_NAME]
 fs = gridfs.GridFS(db)
 meta_collection = db["faces_meta"]
 
-# Haar cascade path (comes with opencv)
+# Haar cascade path
 haarcascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
 face_cascade = cv2.CascadeClassifier(haarcascade_path)
 
+def sanitize_filename(name):
+    """Convert name to safe filename"""
+    # Remove special characters and replace spaces with underscores
+    sanitized = re.sub(r'[^\w\s-]', '', name)
+    sanitized = re.sub(r'[-\s]+', '_', sanitized)
+    return sanitized.strip('_').lower()
+
 def decode_base64_image(data_url):
-    # expected "data:image/png;base64,AAAA..."
     header, encoded = data_url.split(",", 1)
     data = base64.b64decode(encoded)
     img = Image.open(io.BytesIO(data))
@@ -43,82 +50,135 @@ def decode_base64_image(data_url):
 def index():
     return render_template("index.html")
 
-@app.route("/upload", methods=["POST"])
-def upload():
+@app.route("/capture", methods=["POST"])
+def capture():
     """
-    Expect JSON:
-    {
-      "image": "data:image/png;base64,...",
-      "name": "Optional Name"
-    }
+    Enhanced capture endpoint with name-based filename
     """
     payload = request.get_json(force=True)
     data_url = payload.get("image")
     name = payload.get("name", "").strip()
 
     if not data_url:
-        return jsonify({"success": False, "error": "No image sent"}), 400
+        return jsonify({"success": False, "error": "No image received"}), 400
 
-    # decode to cv2 image
+    if not name:
+        return jsonify({"success": False, "error": "Name is required"}), 400
+
     try:
         frame = decode_base64_image(data_url)
     except Exception as e:
         return jsonify({"success": False, "error": f"Could not decode image: {e}"}), 400
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    # detect faces (tweak scaleFactor/minSize as you like)
-    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(80,80))
+    faces = face_cascade.detectMultiScale(
+        gray, 
+        scaleFactor=1.1, 
+        minNeighbors=5, 
+        minSize=(100, 100),
+        flags=cv2.CASCADE_SCALE_IMAGE
+    )
 
     if len(faces) == 0:
-        return jsonify({"success": False, "error": "No face detected. Ask the person to face the camera."}), 200
+        return jsonify({
+            "success": False, 
+            "error": "No face detected. Please ensure you're facing the camera clearly."
+        }), 200
 
-    # pick the largest face (likely the person)
-    largest = max(faces, key=lambda r: r[2]*r[3])
+    # Get the largest face
+    largest = max(faces, key=lambda r: r[2] * r[3])
     x, y, w, h = largest
-    margin = int(0.25 * max(w, h))  # add some margin
+    
+    # Add margin around face
+    margin = int(0.3 * max(w, h))
     x1 = max(0, x - margin)
     y1 = max(0, y - margin)
     x2 = min(frame.shape[1], x + w + margin)
     y2 = min(frame.shape[0], y + h + margin)
     face_img = frame[y1:y2, x1:x2]
 
-    # convert BGR -> RGB and save via PIL
+    # Convert BGR -> RGB
     face_rgb = cv2.cvtColor(face_img, cv2.COLOR_BGR2RGB)
     pil_img = Image.fromarray(face_rgb).convert("RGB")
 
-    # filename
-    unique_id = str(uuid.uuid4())
-    filename = f"{unique_id}.jpg"
+    # Create filename based on name
+    safe_name = sanitize_filename(name)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"{safe_name}_{timestamp}.jpg"
     save_path = os.path.join(SAVE_FOLDER, filename)
-    pil_img.save(save_path, format="JPEG", quality=90)
+    
+    # Save image with high quality
+    pil_img.save(save_path, format="JPEG", quality=95)
 
-    # Save a copy to GridFS
+    # Save to GridFS
     with io.BytesIO() as buf:
-        pil_img.save(buf, format="JPEG")
+        pil_img.save(buf, format="JPEG", quality=95)
         buf.seek(0)
-        grid_id = fs.put(buf.read(), filename=filename, contentType="image/jpeg", uploaded_at=datetime.utcnow())
+        grid_id = fs.put(
+            buf.read(), 
+            filename=filename, 
+            contentType="image/jpeg", 
+            uploaded_at=datetime.utcnow()
+        )
 
     # Save metadata
     doc = {
         "filename": filename,
         "gridfs_id": grid_id,
-        "name": name if name else None,
+        "name": name,
+        "safe_name": safe_name,
         "timestamp": datetime.utcnow(),
+        "face_detected": True,
+        "face_count": len(faces)
     }
     meta_collection.insert_one(doc)
 
-    # build welcome message
-    display_name = name if name else "Welcome Guest"
-    # construct accessible URL for the saved face file
+    # Generate personalized welcome message
+    welcome_messages = [
+        f"Welcome to our institution, {name}! 🎉",
+        f"Hello {name}! Great to have you here! ✨",
+        f"Welcome {name}! Hope you have a wonderful time! 🌟",
+        f"Greetings {name}! Welcome aboard! 🚀"
+    ]
+    
+    import random
+    welcome_message = random.choice(welcome_messages)
+    
     face_url = url_for("static", filename=f"faces/{filename}")
 
     return jsonify({
         "success": True,
-        "message": f"Welcome, {display_name}!",
+        "message": welcome_message,
         "face_url": face_url,
+        "name": name,
+        "filename": filename,
         "meta_id": str(doc.get("_id"))
     }), 200
 
+@app.route("/api/visitors", methods=["GET"])
+def get_visitors():
+    """Get recent visitors for display"""
+    try:
+        recent_visitors = list(
+            meta_collection.find()
+            .sort("timestamp", -1)
+            .limit(10)
+        )
+        
+        for visitor in recent_visitors:
+            visitor["_id"] = str(visitor["_id"])
+            visitor["gridfs_id"] = str(visitor["gridfs_id"])
+            visitor["timestamp"] = visitor["timestamp"].isoformat()
+        
+        return jsonify({
+            "success": True,
+            "visitors": recent_visitors
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", debug=True)

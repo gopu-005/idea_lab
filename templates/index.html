@@ -3,39 +3,873 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>College Inauguration — Face Welcome</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <title>Smart Welcome Gate - Face Registration</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #3b82f6;
+      --primary-dark: #1d4ed8;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      --background: #0f1419;
+      --surface: #1a1f2e;
+      --surface-light: #252a3a;
+      --text-primary: #ffffff;
+      --text-secondary: #94a3b8;
+      --border: rgba(255, 255, 255, 0.1);
+      --shadow: rgba(0, 0, 0, 0.5);
+      --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --accent: #f8fafc;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--background);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Animated background */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: 
+        radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(245, 158, 11, 0.05) 0%, transparent 50%);
+      z-index: -1;
+      animation: backgroundFlow 20s ease-in-out infinite;
+    }
+
+    @keyframes backgroundFlow {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(1.1); }
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+      margin-bottom: 3rem;
+      animation: slideInDown 0.8s ease-out;
+    }
+
+    .header h1 {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 700;
+      background: var(--gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.5rem;
+    }
+
+    .header p {
+      color: var(--text-secondary);
+      font-size: 1.2rem;
+      font-weight: 400;
+    }
+
+    /* Main Card */
+    .main-card {
+      background: var(--surface);
+      border-radius: 24px;
+      padding: 2rem;
+      box-shadow: 0 25px 50px -12px var(--shadow);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(10px);
+      animation: slideInUp 0.8s ease-out 0.2s both;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    /* Step Indicator */
+    .step-indicator {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 2rem;
+      gap: 1rem;
+    }
+
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border-radius: 50px;
+      border: 2px solid var(--border);
+      background: var(--surface-light);
+      transition: all 0.3s ease;
+    }
+
+    .step.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white;
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+    }
+
+    .step.completed {
+      background: var(--success);
+      border-color: var(--success);
+      color: white;
+    }
+
+    /* Form Steps */
+    .form-step {
+      display: none;
+      animation: fadeIn 0.5s ease;
+    }
+
+    .form-step.active {
+      display: block;
+    }
+
+    /* Name Input Step */
+    .name-section {
+      text-align: center;
+    }
+
+    .name-section h2 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+      color: var(--text-primary);
+    }
+
+    .name-section p {
+      color: var(--text-secondary);
+      margin-bottom: 2rem;
+      font-size: 1.1rem;
+    }
+
+    .name-input-container {
+      position: relative;
+      max-width: 400px;
+      margin: 0 auto 2rem;
+    }
+
+    .name-input {
+      width: 100%;
+      padding: 1rem 1.5rem;
+      font-size: 1.2rem;
+      border: 2px solid var(--border);
+      border-radius: 16px;
+      background: var(--surface-light);
+      color: var(--text-primary);
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    .name-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      transform: translateY(-2px);
+    }
+
+    .name-input::placeholder {
+      color: var(--text-secondary);
+    }
+
+    /* Camera Section */
+    .camera-section {
+      text-align: center;
+    }
+
+    .countdown-display {
+      font-size: 4rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin: 2rem 0;
+      text-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+      animation: pulse 1s ease-in-out infinite;
+    }
+
+    .camera-container {
+      position: relative;
+      display: inline-block;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 20px 40px var(--shadow);
+      border: 4px solid var(--primary);
+    }
+
+    .video-element {
+      width: 480px;
+      height: 360px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .camera-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 200px;
+      height: 200px;
+      border: 3px solid var(--success);
+      border-radius: 50%;
+      opacity: 0;
+      animation: scanEffect 2s ease-in-out infinite;
+    }
+
+    .camera-status {
+      margin-top: 1rem;
+      padding: 1rem;
+      border-radius: 12px;
+      background: var(--surface-light);
+      font-size: 1.1rem;
+      font-weight: 500;
+    }
+
+    .status-preparing {
+      color: var(--warning);
+      border-left: 4px solid var(--warning);
+    }
+
+    .status-ready {
+      color: var(--success);
+      border-left: 4px solid var(--success);
+    }
+
+    /* Result Section */
+    .result-section {
+      text-align: center;
+    }
+
+    .welcome-message {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 2rem;
+      background: linear-gradient(135deg, var(--success), var(--primary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: celebrationPulse 2s ease-in-out infinite;
+    }
+
+    .captured-face {
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 6px solid var(--success);
+      box-shadow: 0 15px 35px rgba(16, 185, 129, 0.3);
+      margin: 0 auto 2rem;
+      animation: zoomIn 0.8s ease-out;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 1rem 2rem;
+      font-size: 1.1rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: left 0.5s;
+    }
+
+    .btn:hover::before {
+      left: 100%;
+    }
+
+    .btn-primary {
+      background: var(--gradient);
+      color: white;
+      box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 30px rgba(59, 130, 246, 0.4);
+    }
+
+    .btn-secondary {
+      background: var(--surface-light);
+      color: var(--text-primary);
+      border: 2px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: var(--primary);
+      border-color: var(--primary);
+      transform: translateY(-2px);
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    /* Hidden elements */
+    .hidden {
+      display: none !important;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .container {
+        padding: 1rem;
+      }
+
+      .main-card {
+        padding: 1.5rem;
+        margin: 1rem;
+      }
+
+      .video-element {
+        width: 320px;
+        height: 240px;
+      }
+
+      .step-indicator {
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .welcome-message {
+        font-size: 1.8rem;
+      }
+    }
+
+    /* Animations */
+    @keyframes slideInDown {
+      from {
+        opacity: 0;
+        transform: translateY(-30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes slideInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    @keyframes scanEffect {
+      0%, 100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8);
+      }
+      50% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.1);
+      }
+    }
+
+    @keyframes celebrationPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.02); }
+    }
+
+    @keyframes zoomIn {
+      from {
+        opacity: 0;
+        transform: scale(0.3);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    /* Loading spinner */
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid var(--border);
+      border-top: 4px solid var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
 </head>
 <body>
   <div class="container">
-    <header>
-      <h1>Welcome Gate</h1>
-      <p class="subtitle">Capture visitor's face & greet them with style</p>
+    <header class="header">
+      <h1>Smart Welcome Gate</h1>
+      <p>Enter your name and get ready for a personalized greeting!</p>
     </header>
 
-    <main>
-      <div class="camera-card">
-        <video id="video" autoplay playsinline></video>
-        <canvas id="snapshot" style="display:none;"></canvas>
-
-        <div class="controls">
-          <input id="nameInput" type="text" placeholder="Visitor name (optional)" />
-          <button id="captureBtn" class="btn-primary">Capture & Welcome</button>
+    <div class="main-card">
+      <!-- Step Indicator -->
+      <div class="step-indicator">
+        <div class="step active" id="step1">
+          <i class="fas fa-user"></i>
+          <span>Enter Name</span>
+        </div>
+        <div class="step" id="step2">
+          <i class="fas fa-camera"></i>
+          <span>Get Ready</span>
+        </div>
+        <div class="step" id="step3">
+          <i class="fas fa-heart"></i>
+          <span>Welcome!</span>
         </div>
       </div>
 
-      <div id="resultCard" class="result-card hidden">
-        <div class="welcome-text" id="welcomeText"></div>
-        <img id="facePreview" alt="Detected face" />
-        <button id="newBtn" class="btn-secondary">Capture another</button>
+      <!-- Step 1: Name Input -->
+      <div class="form-step active" id="nameStep">
+        <div class="name-section">
+          <h2>What's your name?</h2>
+          <p>Please enter your full name to get started</p>
+          
+          <div class="name-input-container">
+            <input 
+              type="text" 
+              id="visitorName" 
+              class="name-input" 
+              placeholder="Enter your full name"
+              maxlength="50"
+              autocomplete="name"
+            />
+          </div>
+          
+          <button id="proceedBtn" class="btn btn-primary">
+            <i class="fas fa-arrow-right"></i>
+            Continue
+          </button>
+        </div>
       </div>
-    </main>
 
-    <footer>
-      <small>Make sure to get consent before saving photos. For demo only.</small>
-    </footer>
+      <!-- Step 2: Camera Preparation -->
+      <div class="form-step" id="cameraStep">
+        <div class="camera-section">
+          <h2>Get Ready for Your Photo!</h2>
+          <p id="preparationText">Preparing camera...</p>
+          
+          <div class="countdown-display hidden" id="countdown">5</div>
+          
+          <div class="camera-container">
+            <video id="video" class="video-element" autoplay playsinline muted></video>
+            <div class="camera-overlay" id="faceOverlay"></div>
+            <canvas id="canvas" style="display: none;"></canvas>
+          </div>
+          
+          <div class="camera-status status-preparing" id="cameraStatus">
+            <i class="fas fa-cog fa-spin"></i>
+            Getting camera ready...
+          </div>
+          
+          <button id="skipBtn" class="btn btn-secondary hidden" style="margin-top: 1rem;">
+            <i class="fas fa-forward"></i>
+            Skip Countdown
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 3: Welcome Result -->
+      <div class="form-step" id="resultStep">
+        <div class="result-section">
+          <div class="welcome-message" id="welcomeMessage"></div>
+          <img id="capturedFace" class="captured-face" alt="Your photo" />
+          
+          <div style="margin-top: 2rem;">
+            <button id="newVisitorBtn" class="btn btn-primary">
+              <i class="fas fa-plus"></i>
+              Welcome Another Visitor
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading overlay -->
+    <div id="loadingOverlay" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 1000;">
+      <div style="text-align: center; color: white;">
+        <div class="loading-spinner"></div>
+        <p style="margin-top: 1rem; font-size: 1.2rem;">Processing your photo...</p>
+      </div>
+    </div>
   </div>
 
-  <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+  <script>
+    class WelcomeGate {
+      constructor() {
+        this.currentStep = 1;
+        this.visitorName = '';
+        this.stream = null;
+        this.countdownTimer = null;
+        this.countdownValue = 5;
+        
+        this.initializeElements();
+        this.setupEventListeners();
+      }
+
+      initializeElements() {
+        // Form elements
+        this.nameInput = document.getElementById('visitorName');
+        this.proceedBtn = document.getElementById('proceedBtn');
+        this.skipBtn = document.getElementById('skipBtn');
+        this.newVisitorBtn = document.getElementById('newVisitorBtn');
+        
+        // Steps
+        this.nameStep = document.getElementById('nameStep');
+        this.cameraStep = document.getElementById('cameraStep');
+        this.resultStep = document.getElementById('resultStep');
+        
+        // Step indicators
+        this.step1 = document.getElementById('step1');
+        this.step2 = document.getElementById('step2');
+        this.step3 = document.getElementById('step3');
+        
+        // Camera elements
+        this.video = document.getElementById('video');
+        this.canvas = document.getElementById('canvas');
+        this.countdown = document.getElementById('countdown');
+        this.cameraStatus = document.getElementById('cameraStatus');
+        this.preparationText = document.getElementById('preparationText');
+        this.faceOverlay = document.getElementById('faceOverlay');
+        
+        // Result elements
+        this.welcomeMessage = document.getElementById('welcomeMessage');
+        this.capturedFace = document.getElementById('capturedFace');
+        
+        // Loading
+        this.loadingOverlay = document.getElementById('loadingOverlay');
+      }
+
+      setupEventListeners() {
+        // Name input validation
+        this.nameInput.addEventListener('input', () => this.validateName());
+        this.nameInput.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter' && this.nameInput.value.trim()) {
+            this.proceedToCamera();
+          }
+        });
+        
+        // Buttons
+        this.proceedBtn.addEventListener('click', () => this.proceedToCamera());
+        this.skipBtn.addEventListener('click', () => this.skipCountdown());
+        this.newVisitorBtn.addEventListener('click', () => this.resetApp());
+        
+        // Focus name input on load
+        setTimeout(() => this.nameInput.focus(), 500);
+      }
+
+      validateName() {
+        const name = this.nameInput.value.trim();
+        const isValid = name.length >= 2 && /^[a-zA-Z\s'-]+$/.test(name);
+        
+        this.proceedBtn.disabled = !isValid;
+        
+        if (name.length > 0 && !isValid) {
+          this.nameInput.style.borderColor = 'var(--error)';
+        } else {
+          this.nameInput.style.borderColor = isValid ? 'var(--success)' : 'var(--border)';
+        }
+        
+        return isValid;
+      }
+
+      async proceedToCamera() {
+        if (!this.validateName()) return;
+        
+        this.visitorName = this.nameInput.value.trim();
+        this.updateStep(2);
+        
+        try {
+          await this.initializeCamera();
+        } catch (error) {
+          this.showError('Camera access failed. Please ensure camera permissions are granted.');
+        }
+      }
+
+      async initializeCamera() {
+        try {
+          this.stream = await navigator.mediaDevices.getUserMedia({
+            video: { 
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+              facingMode: 'user'
+            },
+            audio: false
+          });
+          
+          this.video.srcObject = this.stream;
+          
+          this.video.onloadedmetadata = () => {
+            this.cameraStatus.className = 'camera-status status-ready';
+            this.cameraStatus.innerHTML = '<i class="fas fa-check"></i> Camera ready! Get ready to smile!';
+            this.preparationText.textContent = `Hi ${this.visitorName}! Position yourself in front of the camera`;
+            
+            setTimeout(() => this.startCountdown(), 2000);
+          };
+          
+        } catch (error) {
+          throw new Error('Failed to access camera: ' + error.message);
+        }
+      }
+
+      startCountdown() {
+        this.countdown.classList.remove('hidden');
+        this.skipBtn.classList.remove('hidden');
+        this.faceOverlay.style.opacity = '1';
+        
+        this.cameraStatus.innerHTML = '<i class="fas fa-camera"></i> Photo will be taken automatically...';
+        
+        this.countdownTimer = setInterval(() => {
+          this.countdown.textContent = this.countdownValue;
+          
+          if (this.countdownValue <= 0) {
+            this.capturePhoto();
+            return;
+          }
+          
+          this.countdownValue--;
+        }, 1000);
+      }
+
+      skipCountdown() {
+        if (this.countdownTimer) {
+          clearInterval(this.countdownTimer);
+          this.countdownValue = 0;
+          this.capturePhoto();
+        }
+      }
+
+      async capturePhoto() {
+        if (this.countdownTimer) {
+          clearInterval(this.countdownTimer);
+        }
+        
+        this.showLoading(true);
+        
+        try {
+          // Capture image from video
+          const canvas = this.canvas;
+          const video = this.video;
+          
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(video, 0, 0);
+          
+          const imageData = canvas.toDataURL('image/jpeg', 0.9);
+          
+          // Send to server
+          const response = await fetch('/capture', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              image: imageData,
+              name: this.visitorName
+            })
+          });
+          
+          const result = await response.json();
+          
+          if (!result.success) {
+            throw new Error(result.error || 'Failed to process image');
+          }
+          
+          this.showResult(result);
+          
+        } catch (error) {
+          this.showError(error.message);
+        } finally {
+          this.showLoading(false);
+        }
+      }
+
+      showResult(result) {
+        this.updateStep(3);
+        this.stopCamera();
+        
+        // Show welcome message with animation
+        this.welcomeMessage.textContent = result.message;
+        this.capturedFace.src = result.face_url;
+        
+        // Play success sound (optional)
+        this.playSuccessSound();
+        
+        // Confetti effect (optional)
+        this.showConfetti();
+      }
+
+      showError(message) {
+        alert('Error: ' + message);
+        this.resetApp();
+      }
+
+      showLoading(show) {
+        this.loadingOverlay.classList.toggle('hidden', !show);
+      }
+
+      updateStep(stepNumber) {
+        // Hide all steps
+        this.nameStep.classList.remove('active');
+        this.cameraStep.classList.remove('active');
+        this.resultStep.classList.remove('active');
+        
+        // Update step indicators
+        this.step1.classList.remove('active', 'completed');
+        this.step2.classList.remove('active', 'completed');
+        this.step3.classList.remove('active', 'completed');
+        
+        // Show current step
+        switch(stepNumber) {
+          case 1:
+            this.nameStep.classList.add('active');
+            this.step1.classList.add('active');
+            break;
+          case 2:
+            this.cameraStep.classList.add('active');
+            this.step1.classList.add('completed');
+            this.step2.classList.add('active');
+            break;
+          case 3:
+            this.resultStep.classList.add('active');
+            this.step1.classList.add('completed');
+            this.step2.classList.add('completed');
+            this.step3.classList.add('active');
+            break;
+        }
+        
+        this.currentStep = stepNumber;
+      }
+
+      stopCamera() {
+        if (this.stream) {
+          this.stream.getTracks().forEach(track => track.stop());
+          this.stream = null;
+        }
+      }
+
+      resetApp() {
+        this.stopCamera();
+        
+        if (this.countdownTimer) {
+          clearInterval(this.countdownTimer);
+        }
+        
+        // Reset form
+        this.nameInput.value = '';
+        this.nameInput.style.borderColor = 'var(--border)';
+        this.visitorName = '';
+        this.countdownValue = 5;
+        
+        // Reset UI
+        this.countdown.classList.add('hidden');
+        this.skipBtn.classList.add('hidden');
+        this.faceOverlay.style.opacity = '0';
+        
+        // Go back to step 1
+        this.updateStep(1);
+        
+        // Focus name input
+        setTimeout(() => this.nameInput.focus(), 300);
+      }
+
+      playSuccessSound() {
+        // Optional: Play a success sound
+        try {
+          const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmUiJA==');
+          audio.volume = 0.3;
+          audio.play().catch(() => {}); // Ignore errors if audio fails
+        } catch (e) {
+          // Audio failed, continue silently
+        }
+      }
+
+      showConfetti() {
+        // Optional: Add confetti effect
+        // This would require additional confetti library or custom animation
+        // For now, we'll add a simple celebration class
+        document.body.classList.add('celebration');
+        setTimeout(() => {
+          document.body.classList.remove('celebration');
+        }, 3000);
+      }
+    }
+
+    // Initialize the application
+    document.addEventListener('DOMContentLoaded', () => {
+      new WelcomeGate();
+    });
+
+    // Add celebration styles
+    const celebrationStyles = `
+      .celebration .welcome-message {
+        animation: celebrationBounce 1s ease-out;
+      }
+      
+      @keyframes celebrationBounce {
+        0% { transform: scale(0.3) rotate(-10deg); opacity: 0; }
+        50% { transform: scale(1.1) rotate(5deg); opacity: 1; }
+        100% { transform: scale(1) rotate(0deg); opacity: 1; }
+      }
+    `;
+    
+    const styleSheet = document.createElement('style');
+    styleSheet.textContent = celebrationStyles;
+    document.head.appendChild(styleSheet);
+  </script>
 </body>
 </html>
