@@ -32,10 +32,12 @@ meta_collection = db["faces_meta"]
 haarcascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
 face_cascade = cv2.CascadeClassifier(haarcascade_path)
 
+
 def sanitize_filename(name):
-    sanitized = re.sub(r'[^\w\s-]', '', name)
-    sanitized = re.sub(r'[-\s]+', '_', sanitized)
-    return sanitized.strip('_').lower()
+    sanitized = re.sub(r"[^\w\s-]", "", name)
+    sanitized = re.sub(r"[-\s]+", "_", sanitized)
+    return sanitized.strip("_").lower()
+
 
 def decode_base64_image(data_url):
     header, encoded = data_url.split(",", 1)
@@ -43,9 +45,11 @@ def decode_base64_image(data_url):
     img = Image.open(io.BytesIO(data))
     return cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
 
+
 @app.route("/")
 def index():
     return render_template("index.html")
+
 
 @app.route("/capture", methods=["POST"])
 def capture():
@@ -65,10 +69,10 @@ def capture():
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-    # Create circular mask matching overlay size (200px diameter)
+    # Create circular mask matching overlay size (300px diameter → 150px radius)
     center_x = frame.shape[1] // 2
     center_y = frame.shape[0] // 2
-    radius = 100  # matches front-end overlay
+    radius = 150  # updated to match front-end overlay
     mask = np.zeros(gray.shape, dtype=np.uint8)
     cv2.circle(mask, (center_x, center_y), radius, 255, -1)
 
@@ -79,14 +83,16 @@ def capture():
         scaleFactor=1.1,
         minNeighbors=5,
         minSize=(100, 100),
-        flags=cv2.CASCADE_SCALE_IMAGE
+        flags=cv2.CASCADE_SCALE_IMAGE,
     )
 
     if len(faces) == 0:
-        return jsonify({
-            "success": False,
-            "error": "No face detected inside the circle. Please align your face properly."
-        }), 200
+        return jsonify(
+            {
+                "success": False,
+                "error": "No face detected inside the circle. Please align your face properly.",
+            }
+        ), 200
 
     largest = max(faces, key=lambda r: r[2] * r[3])
     x, y, w, h = largest
@@ -114,7 +120,7 @@ def capture():
             buf.read(),
             filename=filename,
             contentType="image/jpeg",
-            uploaded_at=datetime.utcnow()
+            uploaded_at=datetime.utcnow(),
         )
 
     doc = {
@@ -124,37 +130,39 @@ def capture():
         "safe_name": safe_name,
         "timestamp": datetime.utcnow(),
         "face_detected": True,
-        "face_count": len(faces)
+        "face_count": len(faces),
     }
     meta_collection.insert_one(doc)
 
     import random
+
     welcome_messages = [
         f"Welcome to our institution, {name}! 🎉",
         f"Hello {name}! Great to have you here! ✨",
         f"Welcome {name}! Hope you have a wonderful time! 🌟",
-        f"Greetings {name}! Welcome aboard! 🚀"
+        f"Greetings {name}! Welcome aboard! 🚀",
     ]
     welcome_message = random.choice(welcome_messages)
 
     face_url = url_for("static", filename=f"faces/{filename}")
 
-    return jsonify({
-        "success": True,
-        "message": welcome_message,
-        "face_url": face_url,
-        "name": name,
-        "filename": filename,
-        "meta_id": str(doc.get("_id"))
-    }), 200
+    return jsonify(
+        {
+            "success": True,
+            "message": welcome_message,
+            "face_url": face_url,
+            "name": name,
+            "filename": filename,
+            "meta_id": str(doc.get("_id")),
+        }
+    ), 200
+
 
 @app.route("/api/visitors", methods=["GET"])
 def get_visitors():
     try:
         recent_visitors = list(
-            meta_collection.find()
-            .sort("timestamp", -1)
-            .limit(10)
+            meta_collection.find().sort("timestamp", -1).limit(10)
         )
         for visitor in recent_visitors:
             visitor["_id"] = str(visitor["_id"])
@@ -163,6 +171,7 @@ def get_visitors():
         return jsonify({"success": True, "visitors": recent_visitors})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", debug=True)
