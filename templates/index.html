@@ -197,13 +197,19 @@
     }
 
     .countdown-display {
-      font-size: 4rem;
-      font-weight: 700;
-      color: var(--primary);
-      margin: 2rem 0;
-      text-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
-      animation: pulse 1s ease-in-out infinite;
-    }
+        font-size: 4rem;
+        font-weight: 700;
+        color: var(--primary);
+        margin: 2rem 0;
+        text-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+        animation: pulse 1s ease-in-out infinite;
+        min-height: 4.5rem; /* Reserve height so no page jump */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        visibility: hidden; /* Start hidden but space kept */
+      }
+
 
     .camera-container {
       position: relative;
@@ -503,7 +509,7 @@
           <h2>Get Ready for Your Photo!</h2>
           <p id="preparationText">Preparing camera...</p>
           
-          <div class="countdown-display hidden" id="countdown">5</div>
+          <div class="countdown-display hidden" id="countdown">3</div>
           
           <div class="camera-container">
             <video id="video" class="video-element" autoplay playsinline muted></video>
@@ -528,13 +534,6 @@
         <div class="result-section">
           <div class="welcome-message" id="welcomeMessage"></div>
           <img id="capturedFace" class="captured-face" alt="Your photo" />
-          
-          <div style="margin-top: 2rem;">
-            <button id="newVisitorBtn" class="btn btn-primary">
-              <i class="fas fa-plus"></i>
-              Welcome Another Visitor
-            </button>
-          </div>
         </div>
       </div>
     </div>
@@ -555,7 +554,7 @@
         this.visitorName = '';
         this.stream = null;
         this.countdownTimer = null;
-        this.countdownValue = 5;
+        this.countdownValue = 3;
         
         this.initializeElements();
         this.setupEventListeners();
@@ -667,6 +666,7 @@
       }
 
       startCountdown() {
+        this.countdown.style.visibility = 'visible';
         this.countdown.classList.remove('hidden');
         this.skipBtn.classList.remove('hidden');
         this.faceOverlay.style.opacity = '1';
@@ -739,19 +739,23 @@
       }
 
       showResult(result) {
-        this.updateStep(3);
-        this.stopCamera();
-        
-        // Show welcome message with animation
-        this.welcomeMessage.textContent = result.message;
-        this.capturedFace.src = result.face_url;
-        
-        // Play success sound (optional)
-        this.playSuccessSound();
-        
-        // Confetti effect (optional)
-        this.showConfetti();
-      }
+      this.updateStep(3);
+      this.stopCamera();
+      
+      // Show welcome message
+      this.welcomeMessage.textContent = result.message;
+      this.capturedFace.src = result.face_url;
+      
+      // Play sound + celebration
+      this.playSuccessSound();
+      this.showConfetti();
+
+      // 👇 Automatically reset after 3 seconds
+      setTimeout(() => {
+        this.resetApp();
+      }, 3000);
+    }
+
 
       showError(message) {
         alert('Error: ' + message);
@@ -813,7 +817,7 @@
         this.nameInput.value = '';
         this.nameInput.style.borderColor = 'var(--border)';
         this.visitorName = '';
-        this.countdownValue = 5;
+        this.countdownValue = 3;
         
         // Reset UI
         this.countdown.classList.add('hidden');

@@ -1,9 +1,8 @@
 import os
 import io
 import base64
-import uuid
 from datetime import datetime
-from flask import Flask, render_template, request, jsonify, send_from_directory, url_for
+from flask import Flask, render_template, request, jsonify, url_for
 from pymongo import MongoClient
 import gridfs
 from PIL import Image
@@ -34,8 +33,6 @@ haarcascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
 face_cascade = cv2.CascadeClassifier(haarcascade_path)
 
 def sanitize_filename(name):
-    """Convert name to safe filename"""
-    # Remove special characters and replace spaces with underscores
     sanitized = re.sub(r'[^\w\s-]', '', name)
     sanitized = re.sub(r'[-\s]+', '_', sanitized)
     return sanitized.strip('_').lower()
@@ -52,16 +49,12 @@ def index():
 
 @app.route("/capture", methods=["POST"])
 def capture():
-    """
-    Enhanced capture endpoint with name-based filename
-    """
     payload = request.get_json(force=True)
     data_url = payload.get("image")
     name = payload.get("name", "").strip()
 
     if not data_url:
         return jsonify({"success": False, "error": "No image received"}), 400
-
     if not name:
         return jsonify({"success": False, "error": "Name is required"}), 400
 
@@ -71,25 +64,33 @@ def capture():
         return jsonify({"success": False, "error": f"Could not decode image: {e}"}), 400
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+    # Create circular mask matching overlay size (200px diameter)
+    center_x = frame.shape[1] // 2
+    center_y = frame.shape[0] // 2
+    radius = 100  # matches front-end overlay
+    mask = np.zeros(gray.shape, dtype=np.uint8)
+    cv2.circle(mask, (center_x, center_y), radius, 255, -1)
+
+    masked_gray = cv2.bitwise_and(gray, gray, mask=mask)
+
     faces = face_cascade.detectMultiScale(
-        gray, 
-        scaleFactor=1.1, 
-        minNeighbors=5, 
+        masked_gray,
+        scaleFactor=1.1,
+        minNeighbors=5,
         minSize=(100, 100),
         flags=cv2.CASCADE_SCALE_IMAGE
     )
 
     if len(faces) == 0:
         return jsonify({
-            "success": False, 
-            "error": "No face detected. Please ensure you're facing the camera clearly."
+            "success": False,
+            "error": "No face detected inside the circle. Please align your face properly."
         }), 200
 
-    # Get the largest face
     largest = max(faces, key=lambda r: r[2] * r[3])
     x, y, w, h = largest
-    
-    # Add margin around face
+
     margin = int(0.3 * max(w, h))
     x1 = max(0, x - margin)
     y1 = max(0, y - margin)
@@ -97,31 +98,25 @@ def capture():
     y2 = min(frame.shape[0], y + h + margin)
     face_img = frame[y1:y2, x1:x2]
 
-    # Convert BGR -> RGB
     face_rgb = cv2.cvtColor(face_img, cv2.COLOR_BGR2RGB)
     pil_img = Image.fromarray(face_rgb).convert("RGB")
 
-    # Create filename based on name
     safe_name = sanitize_filename(name)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"{safe_name}_{timestamp}.jpg"
     save_path = os.path.join(SAVE_FOLDER, filename)
-    
-    # Save image with high quality
     pil_img.save(save_path, format="JPEG", quality=95)
 
-    # Save to GridFS
     with io.BytesIO() as buf:
         pil_img.save(buf, format="JPEG", quality=95)
         buf.seek(0)
         grid_id = fs.put(
-            buf.read(), 
-            filename=filename, 
-            contentType="image/jpeg", 
+            buf.read(),
+            filename=filename,
+            contentType="image/jpeg",
             uploaded_at=datetime.utcnow()
         )
 
-    # Save metadata
     doc = {
         "filename": filename,
         "gridfs_id": grid_id,
@@ -133,17 +128,15 @@ def capture():
     }
     meta_collection.insert_one(doc)
 
-    # Generate personalized welcome message
+    import random
     welcome_messages = [
         f"Welcome to our institution, {name}! 🎉",
         f"Hello {name}! Great to have you here! ✨",
         f"Welcome {name}! Hope you have a wonderful time! 🌟",
         f"Greetings {name}! Welcome aboard! 🚀"
     ]
-    
-    import random
     welcome_message = random.choice(welcome_messages)
-    
+
     face_url = url_for("static", filename=f"faces/{filename}")
 
     return jsonify({
@@ -157,28 +150,19 @@ def capture():
 
 @app.route("/api/visitors", methods=["GET"])
 def get_visitors():
-    """Get recent visitors for display"""
     try:
         recent_visitors = list(
             meta_collection.find()
             .sort("timestamp", -1)
             .limit(10)
         )
-        
         for visitor in recent_visitors:
             visitor["_id"] = str(visitor["_id"])
             visitor["gridfs_id"] = str(visitor["gridfs_id"])
             visitor["timestamp"] = visitor["timestamp"].isoformat()
-        
-        return jsonify({
-            "success": True,
-            "visitors": recent_visitors
-        })
+        return jsonify({"success": True, "visitors": recent_visitors})
     except Exception as e:
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+        return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", debug=True)
